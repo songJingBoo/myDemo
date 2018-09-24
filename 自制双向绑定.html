@@ -1,0 +1,80 @@
+<html> 
+	<head>
+	</head> 
+	<body>
+		<input type="text" id="input" sjb-model="inputValue"/><span sjb-bind="inputValue"></span><br/>
+		<input type="text" id="input" sjb-model="inputValue"/><span sjb-bind="inputValue"></span><br/>
+		<input type="text" id="input" sjb-model="inputValue2"/><span sjb-bind="inputValue2"></span>
+	</body> 
+	<script>
+		var ele = document.querySelectorAll('[sjb-model]');
+		var bindEle = document.querySelectorAll('[sjb-bind]');
+		// 创建总监听对象
+		var obj = {};
+		for(var i = 0;i < ele.length;i++){
+			var attr = ele[i].getAttribute('sjb-model');
+			if( !obj.hasOwnProperty(attr) ){
+				// 实现 js中直接复制功能（如：obj.inputValue.value = 23 ===> obj.inputValue = 23）
+				(function(k,i){
+					Object.defineProperty(obj,k,{
+						get: function(){
+							return k;
+						},
+						set: function(n){
+							// 第一次set时，k == 'k'
+							if(obj[k] && !obj[k].value){
+								k = {
+									value: '',
+									target: k.target || [ele[i]] // 该数据绑定的dom对象
+								};
+							}
+							// 之后set时，k == obj[k]
+							else{
+								k.value = n; // 触发model 到 view
+							}
+						},
+						enumerable: true //可枚举（不然for in 拿不到）
+					});
+				})(attr,i);
+				obj[attr] = ele[i].value // 第一次set
+			}else{
+				obj[attr].target.push(ele[i]);
+			}
+		}
+		// 设置绑定
+		function watch(){
+			for(var key in obj){
+				// 使用自调保存key值，防止回调时取值错误
+				(function(k){
+					// model 到 view
+					Object.defineProperty(obj[k],'value',{
+						get: function(){
+							return obj[k]['value'];
+						},
+						set: function(n){
+							value = n;
+							for(var i = 0;i < this.target.length;i++){
+								this.target[i].value = n;
+							}
+							// 更新's-bind'值
+							for(var j = 0;j < bindEle.length;j++){
+								if(bindEle[j].getAttribute('sjb-bind') == k){
+									bindEle[j].innerHTML = n;
+								}
+							}
+						}
+					});
+					// view 到 model
+					for(var j = 0;j < obj[k].target.length;j++){
+						obj[k].target[j].addEventListener('keyup',function(e){
+							obj[k].value = e.target.value;
+						});
+					}
+				})(key); // 'inputValue'
+			}
+		}
+		watch();
+		obj.inputValue = 23;
+		obj.inputValue2 = 100;
+	</script>
+</html> 
